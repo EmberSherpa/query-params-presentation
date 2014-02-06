@@ -1,0 +1,293 @@
+<!--
+Google IO 2012 HTML5 Slide Template
+
+Authors: Eric Bidelman <ebidel@gmail.com>
+         Luke Mahe <lukem@google.com>
+
+URL: https://code.google.com/p/io-2012-slides
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ember Meetup</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">-->
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+  <!--This one seems to work all the time, but really small on ipad-->
+  <!--<meta name="viewport" content="initial-scale=0.4">-->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" media="all" href="theme/css/default.css">
+  <link rel="stylesheet" media="all" href="theme/css/app.css">
+  <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="theme/css/phone.css">
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->
+  <script data-main="js/slides" src="js/require-1.0.8.min.js"></script>
+</head>
+<body style="opacity: 0">
+
+<slides class="layout-widescreen">
+
+<!-- <slide class="logoslide nobackground">
+  <article class="flexbox vcenter">
+    <span><img src="images/ember_logo.png"></span>
+  </article>
+</slide>
+ -->
+<slide class="title-slide segue nobackground">
+  <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
+  <!-- The content of this hgroup is replaced programmatically through the slide_config.json. -->
+  <hgroup class="auto-fadein">
+    <h1 data-config-title><!-- populated from slide_config.json --></h1>
+    <h2 data-config-subtitle><!-- populated from slide_config.json --></h2>
+    <p data-config-presenter><!-- populated from slide_config.json --></p>
+  </hgroup>
+</slide>
+
+<slide class="big" >
+  
+    <hgroup>
+      <h2>Query Params</h2>
+      <h3>/#/index<strong style="font-weight:bold">?msg=hello&20world</strong></h3>
+    </hgroup>
+    <article >
+<ul>
+<li>dynamic url segments represent the model (eg. :id)</li>
+<li>query params allow serialize other app state
+  <ul>
+    <li>filtering models</li>
+    <li>sort order</li>
+    <li>state of views (eg.tabs)</li>
+  </ul>
+</li>
+</ul></article>
+ 
+</slide>
+
+<slide class="big" >
+  
+    <hgroup>
+      <h2>History</h2>
+      <h3>3rd iteration of query params</h3>
+    </hgroup>
+    <article>
+      
+      <ul>
+        <li>Alex Speller released <a href="https://github.com/alexspeller/ember-query">ember-query library</a> pre 1.0</li>
+        <li>6 months ago - FEATURES['query-params'] by Alex Speller</li>
+        <li>6 weeks ago - FEATURE['query-params-new'] by @machty</li>
+      </ul>
+    </article>
+ 
+</slide>
+
+<slide class="big" >
+  
+    <hgroup>
+      <h2>query-params vs query-params-new</h2>
+      <h3>Less work</h3>  
+    </hgroup>
+    <article>
+      
+      <table>
+        <tr>
+          <th></th>
+          <th>query-params</th>
+          <th>query-params-new</th>
+        </tr>
+        <tr>
+          <td>Declaration</td>
+          <td>Router#map</td>
+          <td>Route's controller</td>
+        </tr>
+        <tr>
+          <td>Params access</td>
+          <td>new arg to model hooks</td>
+          <td>bound to Route's controller</td>
+        </tr>
+        <tr>
+          <td>Changing params</td>
+          <td>transitionTo or {{#link-to}} arguments</td>
+          <td>
+            <ul>
+              <li>transitionTo or {{#link-to}} Handlebars Subexpression</li>
+              <li>changing properties on Route's controller</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+          
+    </article>
+ 
+</slide>
+
+<slide>
+  
+    <hgroup>
+      <h2>Specifying Query Params</h2>
+      <h3></h3>
+    </hgroup>
+    <article>
+<pre class='prettyprint' data-lang='javascript'>
+App.ArticlesController = Ember.ArrayController.extend({
+  queryParams: ['category'],
+  category: null
+});
+</pre>
+
+<h4>Values of params</h4>
+<p>
+<pre class='prettyprint' data-lang='javascript'>
+controller.set('category', null) // -> /#/articles
+controller.set('category', 'news') // -> /#/articles?articles[category]=news
+controller.set('category', ['news', 'sports']) // -> /#/articles?articles[category]=news&articles[category]=sports
+controller.set('category', true) // -> /#/articles&articles[category]
+controller.set('category', false) // -> /#/articles
+</pre>
+
+</article>
+</slide>
+
+<slide>
+  
+    <hgroup>
+      <h2>Filtering with queryParams</h2>
+      <h3></h3>
+    </hgroup>
+    <article>
+<pre class='prettyprint' data-lang='javascript'>
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null,
+
+    filteredArticles: function() {
+      var category = this.get('category');
+      var articles = this.get('model');
+
+      if (category) {
+        return articles.filterProperty('category', category);
+      } else {
+        return articles;
+      }
+    }.property('category', 'model')
+  });
+</pre>
+
+<p>Note: model hooks are not executed on transition</p>
+
+</article>
+</slide>
+
+<slide>
+  
+    <hgroup>
+      <h2>Route#model and query params</h2>
+      <h3></h3>
+    </hgroup>
+    <article>
+<pre class='prettyprint' data-lang='javascript'>
+  App.ArticlesRoute = Ember.Route.extend({
+    model: function(params, transition) {
+      // 1. params with dynamic segments & query params
+      // 2. transition.params is a hash or route hierarchy
+      // 3. this will only be called first time entering the route
+      // 4. all internal transitions will not call model hook
+      return this.store.findQuery('articles', params);
+    }
+  });
+
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null
+  });
+</pre>
+
+</article>
+</slide>
+
+<slide>
+    <hgroup>
+      <h2>Full Transition & Route#refresh</h2>
+      <h3>call the Route#refresh method on queryParamsDidChange action</h3>
+    </hgroup>
+    <article style="margin-top:15px">
+<pre class='prettyprint' data-lang='javascript'>
+  App.ArticlesRoute = Ember.Route.extend({
+    model: function(params) {
+      return this.store.findQuery('articles', params);
+    },
+    actions: {
+      queryParamsDidChange: function() {
+        this.refresh();
+      }
+    }
+  });
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null
+  });
+</pre>
+<p>Note: Route#refresh - general purpose introduced in query-params-new.</p>
+</article>
+</slide>
+
+<slide>
+    <hgroup>
+      <h2>link-to helper & transitionTo method</h2>
+      <h3></h3>
+    </hgroup>
+    <article style="margin-top:15px">
+      <p>Templates require Subexpressions from Handlebars 1.3</p>
+      <pre class='prettyprint' data-lang='html'>
+// specify explicitely
+{{#link-to 'posts' (query-params direction="asc")}}Sort{{/link-to}}
+
+// bind to a property
+{{#link-to 'posts' (query-params direction=otherDirection)}}Sort{{/link-to}}</pre>
+
+      <p>Route#transitionTo and Controller#transitionToRoute accept queryParams key in last parameter</p>
+      <pre class='prettyprint' data-lang='html'>
+this.transitionTo('post', object, {queryParams: {showDetails: true}});
+this.transitionTo('posts', {queryParams: {sort: 'title'}});
+this.transitionTo({queryParams: {direction: 'asc'}});</pre>
+</article>
+</slide>
+
+<slide class="thank-you-slide segue nobackground">
+  <aside class="gdbar right"><img src="images/ember_icon_128.png"></aside>
+  <article class="flexbox vleft auto-fadein">
+    <h2>&lt;/presentation&gt;</h2>
+    <p>thanks!</p>
+  </article>
+  <p class="auto-fadein" data-config-contact>
+    <!-- populated from slide_config.json -->
+  </p>
+</slide>
+
+<!-- <slide class="logoslide dark nobackground">
+  <article class="flexbox vcenter">
+    <span><img src="images/ember_logo_white.png"></span>
+  </article>
+</slide> -->
+
+<slide class="backdrop"></slide>
+
+</slides>
+
+<script>
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-XXXXXXXX-1']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+</script>
+
+<!--[if IE]>
+  <script src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+  <script>CFInstall.check({mode: 'overlay'});</script>
+<![endif]-->
+</body>
+</html>
