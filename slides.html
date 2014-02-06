@@ -43,477 +43,215 @@ URL: https://code.google.com/p/io-2012-slides
   </hgroup>
 </slide>
 
-
 <slide class="big" >
   
     <hgroup>
-      <h2>Overview</h2>
-      <h3></h3>
+      <h2>Query Params</h2>
+      <h3>/#/index<strong style="font-weight:bold">?msg=hello&20world</strong></h3>
     </hgroup>
-    <article ><p>Topics:</p>
+    <article >
 <ul>
-<li>what a Run Loop is?</li>
-<li>Why a Run Loop</li>
-<li>Run Loop Queues in Ember</li>
-<li>autoRun</li>
-<li>autoRun and Testing</li>
-<li>Other methods of Ember.run</li>
+<li>dynamic url segments represent the model (eg. :id)</li>
+<li>query params allow serialize other app state
+  <ul>
+    <li>filtering models</li>
+    <li>sort order</li>
+    <li>state of views (eg.tabs)</li>
+  </ul>
+</li>
 </ul></article>
  
-</slide>
-
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>what a Run Loop is?</h2>
-      <h3></h3>
-    </hgroup>
-  
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>what?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p>... not a <code>loop</code> like programmers might think</p>
-<pre class='prettyprint' data-lang='javascript'>
-for (i = 0; i < length; i++) {
-  // some stuff here
-}
-</pre>
-
-<p>It is an 'aggregate changes over time' mechanism.</p></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>what?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p><q>..used to batch, and order (or reorder) work in a way that is most ... efficient ... by scheduling work on specific queues. These queues have a priority,
-and are processed to completion in priority order.</q></p>
-<footer class='source'><a href='https://code.stypi.com/stefanpenner/se%C3%B1or%20runloop'>Steffan Penner</a></footer></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>what?</h2>
-      <h3>Queues of work to be done</h3>
-    </hgroup>
-    <article ><p><img alt="Queues are like buckets" src="images/bucket.png" />
-<img alt="Queues are like buckets" src="images/bucket.png" />
-<img alt="Queues are like buckets" src="images/bucket.png" />
-<img alt="Queues are like buckets" src="images/bucket.png" />
-<img alt="Queues are like buckets" src="images/bucket.png" />
-<img alt="Queues are like buckets" src="images/bucket.png" /></p>
-<p>Queues are run in order of priority</p></article>
- 
-</slide>
-
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>Why a Run Loop?</h2>
-      <h3></h3>
-    </hgroup>
-  
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article class="flexbox hcenter vcenter"><p>Some things 'cost' more than others</p>
-<ul>
-<li>DOM manipulation</li>
-<li>layout calculations</li>
-<li>your cool, but expensive algorithm</li>
-</ul></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p>Ineffective use of DOM calculations / layout
-<pre class='prettyprint' data-lang='javascript'></p>
-<p>// assuming divs foo, bar, baz
-foo.style.height = "500px";
-foo.offsetHeight;</p>
-<p>bar.style.height = "400px";
-foo.offsetHeight;</p>
-<p>baz.style.height = "200px";
-foo.offsetHeight;
-</pre></p>
-<footer class='source white'><a href=''>Steffan Penner</a></footer></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p>Ineffective use of DOM calculations / layout
-<pre class='prettyprint' data-lang='javascript'></p>
-<p>// assuming divs foo, bar, baz
-foo.style.height = "500px"; // write
-foo.offsetHeight; // read (recalculate style, layout)</p>
-<p>bar.style.height = "400px"; // write
-foo.offsetHeight; // read (recalculate style, layout)</p>
-<p>baz.style.height = "200px"; // write
-foo.offsetHeight; // read (recalculate style, layout)
-</pre></p></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p>Grouping writes before reads helps</p>
-<pre class='prettyprint' data-lang='javascript'>
-
-// assuming divs foo, bar, baz
-foo.style.height = "500px"; // write
-bar.style.height = "400px"; // write
-baz.style.height = "200px"; // write
-
-foo.offsetHeight; // read (recalculate style, layout)
-<b>bar.offsetHeight; // read (style and layout is already known)</b>
-<b>baz.offsetHeight; // read (style and layout is already known)</b>
-
-</pre></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-var Meetup = Ember.Object.extend({
-  title: 'Ember.js',
-  location: 'SLC',
-  food: 'pizza',
-  prettyTitle: function() {
-    return this.get('title') + ' - ' + this.get('location');
-  }.property('title', 'location');
-});
-</pre>
-
-<pre class='prettyprint' data-lang='handlebars'>
-  {{location}}
-  {{prettyTitle}}
-</pre></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-var Meetup = Ember.Object.extend({
-  title: 'Ember.js',
-  location: 'SLC',
-  food: 'pizza',
-  prettyTitle: function() {
-    return this.get('title') + ' - ' + this.get('location');
-  }.property('title', 'location');
-});
-</pre>
-
-<pre class='prettyprint' data-lang='javascript'>
-  var meetup = Meetup.create();
-  meetup.set('location', 'PDX');
-  meetup.set('title', 'Emberenos');
-</pre></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3>without the run loop</h3>
-    </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-  var meetup = Meetup.create();
-  meetup.set('location', 'PDX'); // {{location}} and {{prettyTitle}} updated
-  meetup.set('title', 'Emberenos'); // {{title}} and {{prettyTitle}} updated
-</pre></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3>with the run loop</h3>
-    </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-  var meetup = Meetup.create();
-  meetup.set('location', 'PDX');
-  meetup.set('title', 'Emberenos');
-  // {{location}}, {{title}} and {{prettyTitle}} updated
-</pre></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>why?</h2>
-      <h3>aggregate = net zero change</h3>
-    </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-  var meetup = Meetup.create();
-  meetup.set('location', 'PDX');
-  meetup.set('title', 'Emberenos');
-
-  meetup.set('location', 'SLC');
-  meetup.set('title', 'Ember.js');
-
-  // no DOM update
-</pre></article>
- 
-</slide>
-
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>Run Loop Queues in Ember</h2>
-      <h3></h3>
-    </hgroup>
-  
 </slide>
 
 <slide class="big" >
   
     <hgroup>
-      <h2>queues</h2>
+      <h2>History</h2>
+      <h3>3rd iteration of query params</h3>
+    </hgroup>
+    <article>
+      
+      <ul>
+        <li>Alex Speller released <a href="https://github.com/alexspeller/ember-query">ember-query library</a> pre 1.0</li>
+        <li>6 months ago - FEATURES['query-params'] by Alex Speller</li>
+        <li>6 weeks ago - FEATURE['query-params-new'] by @machty</li>
+      </ul>
+      <h4><strong style="font-weight:bold">query-params</strong> vs <strong style="font-weight:bold">query-params-new</strong></h4>      
+    </article>
+ 
+</slide>
+
+<slide class="big" >
+  
+    <hgroup>
+      <h2>query-params vs query-params-new</h2>
+      <h3>Less work</h3>  
+    </hgroup>
+    <article>
+      
+      <table>
+        <tr>
+          <th></th>
+          <th>query-params</th>
+          <th>query-params-new</th>
+        </tr>
+        <tr>
+          <td>Declaration</td>
+          <td>Router#map</td>
+          <td>Route's controller</td>
+        </tr>
+        <tr>
+          <td>Params access</td>
+          <td>new arg to model hooks</td>
+          <td>bound to Route's controller</td>
+        </tr>
+        <tr>
+          <td>Changing params</td>
+          <td>transitionTo or {{#link-to}} arguments</td>
+          <td>
+            <ul>
+              <li>transitionTo or {{#link-to}} Handlebars Subexpression</li>
+              <li>changing properties on Route's controller</li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+          
+    </article>
+ 
+</slide>
+
+<slide>
+  
+    <hgroup>
+      <h2>Specifying Query Params</h2>
       <h3></h3>
     </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-  Ember.run.queues
+    <article>
+<pre class='prettyprint' data-lang='javascript'>
+App.ArticlesController = Ember.ArrayController.extend({
+  queryParams: ['category'],
+  category: null
+});
 </pre>
 
-<ul class="build">
-<li><code>sync</code>: synchonization jobs, propagate bound data</li>
-<li><code>actions</code>: general work queue, scheduled tasks, promises, etc</li>
-<li><code>routerTransitions</code>: routing transition jobs</li>
-<li><code>render</code>: jobs meant for rendering, typically will update the DOM</li>
-<li><code>afterRender</code>: after the render is complete</li>
-<li><code>destroy</code>: jobs to finish tear-down objects other jobs have destroyed</li>
-</ul></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>psuedo algorithm</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p><img alt="Queues are like buckets" src="images/sync_bucket.png" />
-<img alt="Queues are like buckets" src="images/actions_bucket.png" />
-<img alt="Queues are like buckets" src="images/rtrans_bucket.png" />
-<img alt="Queues are like buckets" src="images/render_bucket.png" />
-<img alt="Queues are like buckets" src="images/arender_bucket.png" />
-<img alt="Queues are like buckets" src="images/destroy_bucket.png" /></p></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>psuedo algorithm</h2>
-      <h3>how the run loop processes jobs</h3>
-    </hgroup>
-    <article ><ul class="build">
-<li>if no queues with jobs, return -- done</li>
-<li>first <code>QUEUE</code> with pending jobs = <code>CURRENT_QUEUE</code></li>
-<li>build temp <code>WORK_QUEUE</code></li>
-<li>pull <code>CURRENT_QUEUE</code> into <code>WORK_QUEUE</code></li>
-<li>process jobs one at a time in <code>WORK_QUEUE</code></li>
-<li>repeat</li>
-</ul></article>
- 
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>psuedo algorithm</h2>
-      <h3>how the run loop processes jobs</h3>
-    </hgroup>
-    <article ><p><img alt="Queues are like buckets" src="images/sync_bucket.png" />
-<img alt="Queues are like buckets" src="images/actions_bucket.png" />
-<img alt="Queues are like buckets" src="images/rtrans_bucket.png" />
-<img alt="Queues are like buckets" src="images/render_bucket.png" />
-<img alt="Queues are like buckets" src="images/arender_bucket.png" />
-<img alt="Queues are like buckets" src="images/destroy_bucket.png" /></p></article>
- 
-</slide>
-
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>autoRun</h2>
-      <h3></h3>
-    </hgroup>
-  
-</slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>autoRun</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><p>In development and production Ember will automatically wrap code it finds in an <code>autoRun</code> when appropriate</p>
+<h4>Values of params</h4>
+<p>
 <pre class='prettyprint' data-lang='javascript'>
-  doSomething: function() {
-    this.set('propA', 3);
-    this.set('propB', 4);
-  }
+controller.set('category', null) // -> /#/articles
+controller.set('category', 'news') // -> /#/articles?articles[category]=news
+controller.set('category', ['news', 'sports']) // -> /#/articles?articles[category]=news&articles[category]=sports
+controller.set('category', true) // -> /#/articles&articles[category]
+controller.set('category', false) // -> /#/articles
 </pre>
 
+</article>
+</slide>
+
+<slide>
+  
+    <hgroup>
+      <h2>Filtering with queryParams</h2>
+      <h3></h3>
+    </hgroup>
+    <article>
 <pre class='prettyprint' data-lang='javascript'>
-  doSomething: function() {
-    Ember.run.begin();
-    this.set('propA', 3);
-    this.set('propB', 4);
-    nextTick(function(){
-      Ember.run.end();
-    });
-  }
-</pre></article>
- 
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null,
+
+    filteredArticles: function() {
+      var category = this.get('category');
+      var articles = this.get('model');
+
+      if (category) {
+        return articles.filterProperty('category', category);
+      } else {
+        return articles;
+      }
+    }.property('category', 'model')
+  });
+</pre>
+
+<p>Note: model hooks are not executed on transition</p>
+
+</article>
 </slide>
 
-<slide  >
+<slide>
   
     <hgroup>
-      <h2>autoRun</h2>
-      <h3>wrap your async</h3>
+      <h2>Route#model and query params</h2>
+      <h3></h3>
     </hgroup>
-    <article ><pre class='prettyprint' data-lang='javascript'>
-  doSomething: function() {
-    Ember.run(function() {
-      this.set('propA', 3);
-      this.set('propB', 4);
-    });
-  }
-</pre></article>
- 
+    <article>
+<pre class='prettyprint' data-lang='javascript'>
+  App.ArticlesRoute = Ember.Route.extend({
+    model: function(params, transition) {
+      // 1. params with dynamic segments & query params
+      // 2. transition.params is a hash or route hierarchy
+      // 3. this will only be called first time entering the route
+      // 4. all internal transitions will not call model hook
+      return this.store.findQuery('articles', params);
+    }
+  });
+
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null
+  });
+</pre>
+
+</article>
 </slide>
 
-<slide  >
-  
+<slide>
     <hgroup>
-      <h2>potential situations to consider</h2>
-      <h3></h3>
+      <h2>Full Transition & Route#refresh</h2>
+      <h3>call the Route#refresh method on queryParamsDidChange action</h3>
     </hgroup>
-    <article ><ul>
-<li>$.ajax callbacks</li>
-<li>animation complete handler</li>
-<li>setTimeout</li>
-<li>setInterval</li>
-<li>postMessage</li>
-<li>MessageChannel</li>
-<li>jQuery event handling</li>
-<li>websocket</li>
-</ul>
-<p>Generally anything async that you write should consider the run loop.</p></article>
- 
+    <article style="margin-top:15px">
+<pre class='prettyprint' data-lang='javascript'>
+  App.ArticlesRoute = Ember.Route.extend({
+    model: function(params) {
+      return this.store.findQuery('articles', params);
+    },
+    actions: {
+      queryParamsDidChange: function() {
+        this.refresh();
+      }
+    }
+  });
+  App.ArticlesController = Ember.ArrayController.extend({
+    queryParams: ['category'],
+    category: null
+  });
+</pre>
+<p>Note: Route#refresh - general purpose introduced in query-params-new.</p>
+</article>
 </slide>
 
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>autoRun and Testing</h2>
-      <h3></h3>
-    </hgroup>
-  
-</slide>
-
-<slide  >
-  
+<slide>
     <hgroup>
-      <h2>autoRun and Testing</h2>
+      <h2>link-to helper & transitionTo method</h2>
       <h3></h3>
     </hgroup>
-    <article class="flexbox vcenter hcenter"><p>Ember testing mode disables <code>autoRun</code></p>
-<p>Can cause testing issues if you are unaware of <code>autoRun</code></p></article>
- 
-</slide>
+    <article style="margin-top:15px">
+      <p>Templates require Subexpressions from Handlebars 1.3</p>
+      <pre class='prettyprint' data-lang='html'>
+// specify explicitely
+{{#link-to 'posts' (query-params direction="asc")}}Sort{{/link-to}}
 
-<slide class="segue dark nobackground" >
-  
-    <aside class="gdbar"><img src="images/ember_icon_128.png"></aside>
-    <hgroup class="auto-fadein">
-      <h2>Other `Ember.run` methods</h2>
-      <h3></h3>
-    </hgroup>
-  
-</slide>
+// bind to a property
+{{#link-to 'posts' (query-params direction=otherDirection)}}Sort{{/link-to}}</pre>
 
-<slide  >
-  
-    <hgroup>
-      <h2>Ember.run stuff</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><ul>
-<li><code>Ember.run.join</code></li>
-<li><code>Ember.run.later</code> &lt;- use instead of <code>setTimeout</code></li>
-<li><code>Ember.run.next</code> &lt;- next tick, consider <code>schedule</code></li>
-<li><code>Ember.run.schedule</code> &lt;- push to queue</li>
-<li><code>Ember.run.throttle</code></li>
-</ul>
-<p>plus more in <a href='http://emberjs.com/api/classes/Ember.run.html'>Ember docs</a></p></article>
- 
+      <p>Route#transitionTo and Controller#transitionToRoute accept queryParams key in last parameter</p>
+      <pre class='prettyprint' data-lang='html'>
+this.transitionTo('post', object, {queryParams: {showDetails: true}});
+this.transitionTo('posts', {queryParams: {sort: 'title'}});
+this.transitionTo({queryParams: {direction: 'asc'}});</pre>
+</article>
 </slide>
-
-<slide  >
-  
-    <hgroup>
-      <h2>Other Resources</h2>
-      <h3></h3>
-    </hgroup>
-    <article ><ul>
-<li><a href='http://stackoverflow.com/questions/13597869/what-is-ember-runloop-and-how-does-it-work#answer-14296339'>matchy SO post</a></li>
-<li><a href='https://code.stypi.com/stefanpenner/se%C3%B1or%20runloop'>Steffan Penner - señor runloop</a></li>
-<li><a href='http://emberjs.com/api/classes/Ember.run.html'>Ember.run Docs</a></li>
-</ul></article>
- 
-</slide>
-
 
 <slide class="thank-you-slide segue nobackground">
   <aside class="gdbar right"><img src="images/ember_icon_128.png"></aside>
